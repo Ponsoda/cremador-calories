@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de distància per cremar calories</title>
+    <title>Calculadora de distància per cremar calories caminant</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
@@ -85,7 +85,7 @@
     </style>
 </head>
 <body>
-    <h1>Calculadora de distància per cremar calories</h1>
+    <h1>Calculadora de distància per cremar calories caminant</h1>
 
     <div class="form-container">
         <label for="calories">Calories consumides (kcal):</label>
@@ -114,7 +114,7 @@
     <!-- Advisory Message Section -->
     <div class="advisory-message">
         <h3>Advertència:</h3>
-        <p>El cercle en el mapa representa la distància en línia recta (com si fos en l'aire, sense seguir carreteres) que hauries de córrer per cremar les calories que has indicat.</p>
+        <p>El cercle en el mapa representa la distància en línia recta (com si fos en l'aire, sense seguir carreteres) que hauries de caminar per cremar les calories que has indicat.</p>
         <p>Recorda que, per a mantindre't saludable, no sols has de centrar-te en les calories consumides. Hi ha molts altres factors importants, com la nutrició equilibrada, el descans adequat i la salut mental.</p>
     </div>
 
@@ -149,7 +149,7 @@
                 });
         }
 
-        // Function to calculate the running distance based on kilocalories consumed
+        // Function to calculate the walking distance based on kilocalories consumed
         function calculateDistance() {
             var calories = document.getElementById('calories').value;
             var city = document.getElementById('city').value;
@@ -160,13 +160,13 @@
                 return;
             }
 
-            // Approximate calories burned per meter for running at 6:14 min/km
-            var runningSpeedMetersPerMinute = 160.77; // meters per minute for 6:14 min/km pace
-            var caloriesPerMinute = 10; // Avg 10 kcal burned per minute running
-            var caloriesPerMeter = caloriesPerMinute / runningSpeedMetersPerMinute; // kcal per meter
+            // Walking speed parameters (5 km/h or 12:00 min/km)
+            var walkingSpeedMetersPerMinute = 5000 / 60; // 5 km/h converted to meters per minute
+            var caloriesPerMinuteWalking = 4.8; // Avg 4.8 kcal burned per minute walking at 5 km/h
+            var caloriesPerMeterWalking = caloriesPerMinuteWalking / walkingSpeedMetersPerMinute;
 
             // Calculate the distance needed in meters
-            var distance = calories / caloriesPerMeter;
+            var distance = calories / caloriesPerMeterWalking;
 
             // Get the city coordinates and then display the circle on the map
             getCityCoordinates(city, function(lat, lon) {
@@ -188,8 +188,8 @@
                     radius: distance // radius in meters
                 }).addTo(map);
 
-                // Optionally, add a popup to show the distance
-                circle.bindPopup("Has de córrer " + distance.toFixed(2) + " metres per cremar " + calories + " kcal.");
+                // Optionally, add a popup to show the distance and pace information
+                circle.bindPopup("Has de caminar " + distance.toFixed(2) + " metres per cremar " + calories + " kcal a una velocitat de 12:00 min/km.");
             });
         }
     </script>
