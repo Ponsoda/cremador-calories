@@ -90,11 +90,13 @@
     <div class="form-container">
         <label for="calories">Calories consumides (kcal):</label>
         <input type="number" id="calories" placeholder="Introdueix calories consumides">
-        
-        <label for="city">Ciutat:</label>
+
+        <label for="city">Centrar mapa a la ciutat:</label>
         <input type="text" id="city" placeholder="Escriu el nom de la ciutat">
+        <button onclick="centerMap()">Centrar mapa</button>
 
         <button onclick="calculateDistance()">Calcula i mostra el cercle</button>
+        <button onclick="removeCircle()">Eliminar cercle</button>
     </div>
 
     <div id="map"></div>
@@ -130,16 +132,48 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Function to get city coordinates using the OpenStreetMap Nominatim API
-        function getCityCoordinates(cityName, callback) {
-            var geocoderUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${cityName}`;
+        var userLocation = null;
+        var marker = null;
+        var circle = null; // Variable to store the circle
+
+        // Explain the new workflow to the user
+        alert("Fes clic a qualsevol lloc del mapa per seleccionar la ubicació des d'on calcular la distància per cremar les calories.");
+
+        // Handle map click to get the user's selected location
+        map.on('click', function(e) {
+            // Get latitude and longitude from click event
+            userLocation = e.latlng;
+
+            // If a marker already exists, remove it
+            if (marker) {
+                map.removeLayer(marker);
+            }
+
+            // Add a marker at the clicked location
+            marker = L.marker(userLocation).addTo(map).bindPopup("Ubicació seleccionada.").openPopup();
+        });
+
+        // Function to center the map on a city name
+        function centerMap() {
+            var city = document.getElementById('city').value;
+
+            // Validate city input
+            if (!city) {
+                alert("Si us plau, introdueix el nom d'una ciutat.");
+                return;
+            }
+
+            // Get the city coordinates using OpenStreetMap Nominatim API
+            var geocoderUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${city}`;
             fetch(geocoderUrl)
                 .then(response => response.json())
                 .then(data => {
                     if (data && data.length > 0) {
                         var lat = data[0].lat;
                         var lon = data[0].lon;
-                        callback(lat, lon);
+
+                        // Center the map on the city
+                        map.setView([lat, lon], 13);
                     } else {
                         alert("No s'ha trobat la ciutat. Si us plau, introdueix un nom de ciutat vàlid.");
                     }
@@ -152,11 +186,14 @@
         // Function to calculate the walking distance based on kilocalories consumed
         function calculateDistance() {
             var calories = document.getElementById('calories').value;
-            var city = document.getElementById('city').value;
 
             // Validate inputs
-            if (!calories || !city) {
-                alert("Si us plau, introdueix les calories consumides i el nom de la ciutat.");
+            if (!calories) {
+                alert("Si us plau, introdueix les calories consumides.");
+                return;
+            }
+            if (!userLocation) {
+                alert("Si us plau, selecciona una ubicació al mapa.");
                 return;
             }
 
@@ -168,29 +205,31 @@
             // Calculate the distance needed in meters
             var distance = calories / caloriesPerMeterWalking;
 
-            // Get the city coordinates and then display the circle on the map
-            getCityCoordinates(city, function(lat, lon) {
-                // Center the map on the city
-                map.setView([lat, lon], 13);
+            // Remove any previous circle
+            if (circle) {
+                map.removeLayer(circle);
+            }
 
-                // Remove any previous circle
-                map.eachLayer(function (layer) {
-                    if (layer instanceof L.Circle) {
-                        map.removeLayer(layer);
-                    }
-                });
+            // Draw the circle with the calculated radius (distance in meters)
+            circle = L.circle(userLocation, {
+                color: 'red',
+                fillColor: '#f03',
+                fillOpacity: 0.5,
+                radius: distance // radius in meters
+            }).addTo(map);
 
-                // Draw the circle with the calculated radius (distance in meters)
-                var circle = L.circle([lat, lon], {
-                    color: 'red',
-                    fillColor: '#f03',
-                    fillOpacity: 0.5,
-                    radius: distance // radius in meters
-                }).addTo(map);
+            // Optionally, add a popup to show the distance and pace information
+            circle.bindPopup("Has de caminar " + distance.toFixed(2) + " metres per cremar " + calories + " kcal a una velocitat de 12:00 min/km.");
+        }
 
-                // Optionally, add a popup to show the distance and pace information
-                circle.bindPopup("Has de caminar " + distance.toFixed(2) + " metres per cremar " + calories + " kcal a una velocitat de 12:00 min/km.");
-            });
+        // Function to remove the circle from the map
+        function removeCircle() {
+            if (circle) {
+                map.removeLayer(circle);
+                circle = null; // Clear the reference to the circle
+            } else {
+                alert("No hi ha cap cercle per eliminar.");
+            }
         }
     </script>
 </body>
