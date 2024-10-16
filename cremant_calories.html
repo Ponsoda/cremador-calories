@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de distància per cremar calories</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            padding: 20px;
+        }
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            max-width: 500px;
+            margin-bottom: 20px;
+        }
+        .form-container label, .form-container input, .form-container button {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        .form-container input {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        .form-container button {
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .form-container button:hover {
+            background-color: #0056b3;
+        }
+        .calories-examples {
+            margin-top: 20px;
+        }
+        .calories-examples ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .calories-examples li {
+            margin-bottom: 5px;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+        }
+        .calories-examples li span {
+            margin-right: 10px;
+        }
+        h1, h2 {
+            color: #007bff;
+        }
+        .advisory-message {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #ffeeba;
+            border: 1px solid #ffeeba;
+            border-radius: 4px;
+            color: #856404;
+        }
+        .advisory-message h3 {
+            margin: 0 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Calculadora de distància per cremar calories</h1>
+
+    <div class="form-container">
+        <label for="calories">Calories consumides (kcal):</label>
+        <input type="number" id="calories" placeholder="Introdueix calories consumides">
+        
+        <label for="city">Ciutat:</label>
+        <input type="text" id="city" placeholder="Escriu el nom de la ciutat">
+
+        <button onclick="calculateDistance()">Calcula i mostra el cercle</button>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="calories-examples">
+        <h2>Exemples d'aliments i les seues calories:</h2>
+        <ul>
+            <li><span>🍏</span>Poma (100g): 52 kcal</li>
+            <li><span>🍞</span>Pa (100g): 265 kcal</li>
+            <li><span>🍚</span>Arròs (100g): 130 kcal</li>
+            <li><span>🍗</span>Pollastre rostit (100g): 239 kcal</li>
+            <li><span>🍫</span>Xocolata negra (100g): 546 kcal</li>
+            <li><span>🍕</span>Pizza (1 porció): 285 kcal</li>
+        </ul>
+    </div>
+
+    <!-- Advisory Message Section -->
+    <div class="advisory-message">
+        <h3>Advertència:</h3>
+        <p>El cercle en el mapa representa la distància en línia recta (com si fos en l'aire, sense seguir carreteres) que hauries de córrer per cremar les calories que has indicat.</p>
+        <p>Recorda que, per a mantindre't saludable, no sols has de centrar-te en les calories consumides. Hi ha molts altres factors importants, com la nutrició equilibrada, el descans adequat i la salut mental.</p>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([39.4699, -0.3763], 13); // Default location: Valencia
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Function to get city coordinates using the OpenStreetMap Nominatim API
+        function getCityCoordinates(cityName, callback) {
+            var geocoderUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${cityName}`;
+            fetch(geocoderUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        var lat = data[0].lat;
+                        var lon = data[0].lon;
+                        callback(lat, lon);
+                    } else {
+                        alert("No s'ha trobat la ciutat. Si us plau, introdueix un nom de ciutat vàlid.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching city coordinates:', error);
+                });
+        }
+
+        // Function to calculate the running distance based on kilocalories consumed
+        function calculateDistance() {
+            var calories = document.getElementById('calories').value;
+            var city = document.getElementById('city').value;
+
+            // Validate inputs
+            if (!calories || !city) {
+                alert("Si us plau, introdueix les calories consumides i el nom de la ciutat.");
+                return;
+            }
+
+            // Approximate calories burned per meter for running at 6:14 min/km
+            var runningSpeedMetersPerMinute = 160.77; // meters per minute for 6:14 min/km pace
+            var caloriesPerMinute = 10; // Avg 10 kcal burned per minute running
+            var caloriesPerMeter = caloriesPerMinute / runningSpeedMetersPerMinute; // kcal per meter
+
+            // Calculate the distance needed in meters
+            var distance = calories / caloriesPerMeter;
+
+            // Get the city coordinates and then display the circle on the map
+            getCityCoordinates(city, function(lat, lon) {
+                // Center the map on the city
+                map.setView([lat, lon], 13);
+
+                // Remove any previous circle
+                map.eachLayer(function (layer) {
+                    if (layer instanceof L.Circle) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                // Draw the circle with the calculated radius (distance in meters)
+                var circle = L.circle([lat, lon], {
+                    color: 'red',
+                    fillColor: '#f03',
+                    fillOpacity: 0.5,
+                    radius: distance // radius in meters
+                }).addTo(map);
+
+                // Optionally, add a popup to show the distance
+                circle.bindPopup("Has de córrer " + distance.toFixed(2) + " metres per cremar " + calories + " kcal.");
+            });
+        }
+    </script>
+</body>
+</html>
